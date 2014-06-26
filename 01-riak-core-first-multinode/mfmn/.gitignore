@@ -1,6 +1,8 @@
 *.beam
 .eunit
 deps/*
-ebin
+ebin/*
 rel/mfmn
 dev
+apps/mfmn/src/*
+rel/vars/dev[1-9]_vars.config
