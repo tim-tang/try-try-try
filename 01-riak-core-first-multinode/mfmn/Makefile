@@ -1,3 +1,5 @@
+.PHONY: deps
+
 all: deps compile
 
 compile:
@@ -5,6 +7,8 @@ compile:
 
 deps:
 	./rebar get-deps
+	# patch the riak_core rebar.config to work around: "Warning: crypto:sha/1 is deprecated and will be removed in in a future release; use crypto:hash/2"
+	sed -i 's/warnings_as_errors,//g' deps/riak_core/rebar.config
 
 clean:
 	./rebar clean

@@ -19,32 +19,42 @@ TLDR, Start Here
 
 Enough of me attempting to be witty (is it possible to be witty in written form?).  The first thing you need to do is grab the templates and drop them in `~/.rebar/templates`.
 
-    git clone git://github.com/rzezeski/rebar_riak_core.git
-    mkdir -p ~/.rebar/templates
-    cp rebar_riak_core/* ~/.rebar/templates
-    ls ~/.rebar/templates
+```bash
+git clone git://github.com/rzezeski/rebar_riak_core.git
+mkdir -p ~/.rebar/templates
+cp rebar_riak_core/* ~/.rebar/templates
+ls ~/.rebar/templates
+```
 
 Without executing the above steps rebar won't be able to find the _riak\_core\_multinode_ template (can I configure rebar to look in other dirs for templates?).  If you don't have rebar don't worry, we'll get to that.  Next, make a directory to house your new multinode capable Riak Core application.
 
-    mkdir mfmn
-    cd mfmn
+```bash
+mkdir mfmn
+cd mfmn
+```
 
 The mfmn stands for "My First MultiNode".  Original, I know.  Next, you need rebar.
 
-    wget http://cloud.github.com/downloads/basho/rebar/rebar && chmod u+x rebar
+```bash
+wget http://cloud.github.com/downloads/basho/rebar/rebar && chmod u+x rebar
+```
 
 Great, now create your new multinode app.
 
-    ./rebar create template=riak_core_multinode appid=mfmn nodeid=mfmn
+```bash
+./rebar create template=riak_core_multinode appid=mfmn nodeid=mfmn
+```
 
 Here is an excerpt of what the output should look like:
 
-    ==> mfmn (create)
-    Writing rel/reltool.config
-    Writing rel/files/erl
-    Writing rel/files/nodetool
-    Writing rel/files/mfmn
-    ...
+```bash
+==> mfmn (create)
+Writing rel/reltool.config
+Writing rel/files/erl
+Writing rel/files/nodetool
+Writing rel/files/mfmn
+...
+```
 
 Let me break that last command down a bit:
 
@@ -56,12 +66,16 @@ Let me break that last command down a bit:
 
 Congrats, you have the start of a Riak Core application that can be deployed to multiple nodes and joined together to form a _multinode_ cluster.  Lets start 'er up.
 
-    make rel
-    ./rel/mfmn/bin/mfmn console
+```bash
+make rel
+./rel/mfmn/bin/mfmn console
+```
 
 At this point you have a single node of _mfmn_ running, now for the moment you've been waiting for!
 
-    mfmn:ping().
+```erlang
+mfmn:ping().
+```
 
 You should see something like `{pong,365375409332725729550921208179070754913983135744}` returned but the really large number probably won't be the same.  Try running that command a few times back to back.  Notice how the number changes each time?  That's a _partition_ in Riak Core parlance, and the fact that it's changing means your ping request is getting distributed across the various _vnodes_ in the one node cluster.  "Wait..wha?  What the hell is a vnode Ryan?"  Glad you asked.
 
@@ -72,19 +86,27 @@ devrel
 
 Above I showed you how to start a single node with the console at the foreground, but this isn't typically how other Riak Core based applications like Riak are tested.  Instead, there is something called a _devrel_ that allows one to easily stand up a local 3-node cluster.  Lucky for you I included this in the multinode template.
 
-    make devrel
+```bash
+make devrel
+```
 
 This command is very similar to `rel` but instead creates 3 separate instances under the `dev/` dir; check it out.
 
-    ls dev
+```bash
+ls dev
+```
 
 Now, lets start all the nodes.
 
-    for d in dev/dev*; do $d/bin/mfmn start; done
+```bash
+for d in dev/dev*; do $d/bin/mfmn start; done
+```
 
 There's no output so let's make sure they are indeed up.
 
-    for d in dev/dev*; do $d/bin/mfmn ping; done
+```bash
+for d in dev/dev*; do $d/bin/mfmn ping; done
+```
 
 You should see three `pong` replies.  Now, at this point, it is worth saying that you have three **INDIVIDUAL** mfmn nodes running.  They are **NOT** aware of each other yet and if this were a Riak KV cluster you could store data in one node and the other node will have no idea it's there.  In order to form the cluster you have to _join_ the nodes.  Don't worry, you only have to join them once.  If a node, or the entire cluster, goes down it will remember the other nodes it's joined to.
 
@@ -94,16 +116,22 @@ Finally, to make sure they really all agree on the shape of the cluster you can 
 
 To verify you have a 3 node cluster you can run the `member_status` command.
 
-    ./dev/dev1/bin/mfmn-admin member_status
+```bash
+./dev/dev1/bin/mfmn-admin member_status
+```
 
 Now you can attach to the shell of one of the nodes and run the `ping` command.
 
-    ./dev/dev2/bin/mfmn attach
-    mfmn:ping().
+```bash
+./dev/dev2/bin/mfmn attach
+mfmn:ping().
+```
 
 To stop all the nodes just transpose `start` for `stop`.
 
-    for d in dev/dev*; do $d/bin/mfmn stop; done
+```bash
+for d in dev/dev*; do $d/bin/mfmn stop; done
+```
 
 This is a "Working Blog"
 ----------
