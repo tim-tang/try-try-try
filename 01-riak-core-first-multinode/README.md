@@ -20,10 +20,18 @@ TLDR, Start Here
 Enough of me attempting to be witty (is it possible to be witty in written form?).  The first thing you need to do is grab the templates and drop them in `~/.rebar/templates`.
 
 ```bash
-git clone git://github.com/rzezeski/rebar_riak_core.git
+git clone git@github.com:basho/rebar_riak_core.git
+cd rebar_riak_core
+make
+```
+
+**Note:**
+
+The Makefile provided by basho actually does following for you. Yes, as simple as copying some files.
+
+```bash
 mkdir -p ~/.rebar/templates
 cp rebar_riak_core/* ~/.rebar/templates
-ls ~/.rebar/templates
 ```
 
 Without executing the above steps rebar won't be able to find the _riak\_core\_multinode_ template (can I configure rebar to look in other dirs for templates?).  If you don't have rebar don't worry, we'll get to that.  Next, make a directory to house your new multinode capable Riak Core application.
@@ -36,13 +44,18 @@ cd mfmn
 The mfmn stands for "My First MultiNode".  Original, I know.  Next, you need rebar.
 
 ```bash
-wget http://cloud.github.com/downloads/basho/rebar/rebar && chmod u+x rebar
+mkdir tmp; cd tmp
+git clone git@github.com:basho/rebar.git
+cd ./rebar; ./bootstrap
+cd ../..
+cp ./tmp/rebar/rebar .
+rm -rf tmp
 ```
 
 Great, now create your new multinode app.
 
 ```bash
-./rebar create template=riak_core_multinode appid=mfmn nodeid=mfmn
+./rebar create template=riak_core appid=mfmn nodeid=mfmn
 ```
 
 Here is an excerpt of what the output should look like:
@@ -65,6 +78,16 @@ Let me break that last command down a bit:
 * `appid` & `nodeid`: These are a little harder to explain without going into Erlang OTP, applications and releases.  The multinode template not only assumes you want to build a local application (and by local I mean in the same repo) but also that you want to build a release around this application.  If you have no clue what that means then just ignore this for now and specify the same value for both.
 
 Congrats, you have the start of a Riak Core application that can be deployed to multiple nodes and joined together to form a _multinode_ cluster.  Lets start 'er up.
+
+**Note:**
+
+Unfortunately, the _rebar\_riak\_core_ templates still use old version of riak_core. To use the newest riak_core, `vi rebar.config` and modify `deps` part as
+
+```erlang
+{deps, [
+     {riak_core, "1.4.*", {git, "git://github.com/basho/riak_core", {tag, "1.4.9"}}}
+]}.
+```
 
 ```bash
 make rel
@@ -108,16 +131,29 @@ There's no output so let's make sure they are indeed up.
 for d in dev/dev*; do $d/bin/mfmn ping; done
 ```
 
-You should see three `pong` replies.  Now, at this point, it is worth saying that you have three **INDIVIDUAL** mfmn nodes running.  They are **NOT** aware of each other yet and if this were a Riak KV cluster you could store data in one node and the other node will have no idea it's there.  In order to form the cluster you have to _join_ the nodes.  Don't worry, you only have to join them once.  If a node, or the entire cluster, goes down it will remember the other nodes it's joined to.
+You should see four `pong` replies.  Now, at this point, it is worth saying that you have three **INDIVIDUAL** mfmn nodes running.  They are **NOT** aware of each other yet and if this were a Riak KV cluster you could store data in one node and the other node will have no idea it's there.  In order to form the cluster you have to _join_ the nodes.  Don't worry, you only have to join them once.  If a node, or the entire cluster, goes down it will remember the other nodes it's joined to.
 
     for d in dev/dev{2,3}; do $d/bin/mfmn-admin join mfmn1@127.0.0.1; done
 
 Finally, to make sure they really all agree on the shape of the cluster you can ask if the _ring_ is "ready."
 
-To verify you have a 3 node cluster you can run the `member_status` command.
+To verify you have a 3 nodes cluster you can run the `member_status` command.
 
 ```bash
 ./dev/dev1/bin/mfmn-admin member_status
+```
+
+You may get something like
+
+```
+================================= Membership ==================================
+Status     Ring    Pending    Node
+-------------------------------------------------------------------------------
+valid      34.4%      --      'mfmn1@127.0.0.1'
+valid      32.8%      --      'mfmn2@127.0.0.1'
+valid      32.8%      --      'mfmn3@127.0.0.1'
+-------------------------------------------------------------------------------
+Valid:3 / Leaving:0 / Exiting:0 / Joining:0 / Down:0
 ```
 
 Now you can attach to the shell of one of the nodes and run the `ping` command.
