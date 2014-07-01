@@ -7,6 +7,7 @@
 %%
 %% Since this vnode is purely for computation there is no need to
 %% worry about handoff.
+
 -module(rts_entry_vnode).
 -behaviour(riak_core_vnode).
 -include("rts.hrl").
@@ -47,90 +48,94 @@
 %%%===================================================================
 
 start_vnode(I) ->
-    riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
+  riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
 entry(IdxNode, Client, Entry) ->
-    riak_core_vnode_master:command(IdxNode,
-                                   {entry, Client, Entry},
-                                   ?MASTER).
+  riak_core_vnode_master:command(IdxNode, {entry, Client, Entry}, ?MASTER).
 
 %%%===================================================================
 %%% Callbacks
 %%%===================================================================
 
 init([Partition]) ->
-    Reg = [
-           {?COMBINED_LF, fun ?MODULE:combined_lf/2}
-          ],
-    {ok, #state { partition=Partition, reg=Reg }}.
+  lager:info("hello, I am entry vnode: ~p, ~p~n", [Partition, self()]),
+  Reg = [ {?COMBINED_LF, fun ?MODULE:combined_lf/2} ],
+  {ok, #state { partition=Partition, reg=Reg }}.
 
 handle_command({entry, Client, Entry}, _Sender, #state{reg=Reg}=State) ->
-    io:format("~p~n", [{entry, State#state.partition}]),
-    lists:foreach(match(Client, Entry), Reg),
-    {noreply, State}.
+  lager:info("~p incoming entry: ~p~n", [State#state.partition, Entry]),
+  lists:foreach(match(Client, Entry), Reg),
+  {noreply, State}.
 
 handle_handoff_command(_Message, _Sender, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 handoff_starting(_TargetNode, _State) ->
-    {true, _State}.
+  {true, _State}.
 
 handoff_cancelled(State) ->
-    {ok, State}.
+  {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
-    {ok, State}.
+  {ok, State}.
 
 handle_handoff_data(_Data, State) ->
-    {reply, ok, State}.
+  {reply, ok, State}.
 
 encode_handoff_item(_ObjectName, _ObjectValue) ->
-    <<>>.
+  <<>>.
 
 is_empty(State) ->
-    {true, State}.
+  {true, State}.
 
 delete(State) ->
-    {ok, State}.
+  {ok, State}.
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
-    {stop, not_implemented, State}.
+  {stop, not_implemented, State}.
 
 handle_exit(_Pid, _Reason, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 terminate(_Reason, _State) ->
-    ok.
+  ok.
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
 match(Client, Entry) ->
-    fun({Regexp, Fun}) ->
-            case re:run(Entry, Regexp, [{capture, all, list}]) of
-                nomatch -> ignore;
-                {match, Match} -> Fun({Client, Entry, Regexp}, Match)
-            end
-    end.
+  fun({Regexp, Fun}) ->
+      case re:run(Entry, Regexp, [{capture, all, list}]) of
+        nomatch -> ignore;
+        {match, Match} -> Fun({Client, Entry, Regexp}, Match)
+      end
+  end.
 
 %%%===================================================================
 %%% Match Handlers
 %%%===================================================================
 
 combined_lf({Client, _Entry, _Regexp}, [_Entry, _Host, _, _User, _Time, Req, Code, BodySize, _Referer, Agent]) ->
-    rts:sadd(Client, "agents", Agent),
-    rts:incrby(Client, "total_sent", list_to_integer(BodySize)),
-    [Method, _Resource, _Protocol] = string:tokens(Req, " "),
-    rts:incr(Client, Method),
-    case Code of
-        [$2, _, _] ->
-            rts:incr(Client, "200");
-        [$3, _, _] ->
-            rts:incr(Client, "300");
-        [$4, _, _] ->
-            rts:incr(Client, "400");
-        [$5, _, _] ->
-            rts:incr(Client, "500")
-    end,
-    rts:incr(Client, "total_reqs").
+  lager:info("matched: ~p, ~p, ~p~n", [Req, Code, BodySize]),
+  rts:sadd(Client, "agents", Agent),
+  rts:incrby(Client, "total_sent", list_to_integer(BodySize)),
+  case string:tokens(Req, " ") of
+    [Method, _Resource, _Protocol] ->
+      rts:incr(Client, Method);
+    [Method] ->
+      rts:incr(Client, Method);
+    _ ->
+      lager:warning("Unexception parsing result: ~p~n", [Req])
+  end,
+  case Code of
+    [$2, _, _] ->
+      rts:incr(Client, "200");
+    [$3, _, _] ->
+      rts:incr(Client, "300");
+    [$4, _, _] ->
+      rts:incr(Client, "400");
+    [$5, _, _] ->
+      rts:incr(Client, "500")
+  end,
+  rts:incr(Client, "total_reqs").

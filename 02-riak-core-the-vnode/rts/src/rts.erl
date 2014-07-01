@@ -26,15 +26,16 @@ ping() ->
   [{IndexNode, _Type}] = PrefList,
   riak_core_vnode_master:sync_spawn_command(IndexNode, ping, rts_vnode_master).
 
+% @doc Process entries from a file
 entry_from_file(Client, FilePath) ->
   case file:read_file(FilePath) of
     {ok, Data} ->
       LinesData = binary:split(Data, [<<"\n">>], [global]),
       lists:foreach(fun(LineData) -> entry(Client, binary_to_list(LineData)) end, LinesData),
-      io:format("%d entries processed. ~n", length(LinesData)),
+      io:format("~p entries processed~n", [length(LinesData)]),
       ok;
     {error, Reason} ->
-      io:format("Read file ~s failed: ~p. ~n", [FilePath, Reason])
+      io:format("Read file ~s failed: ~p~n", [FilePath, Reason])
   end.
 
 %% @doc Process an entry.

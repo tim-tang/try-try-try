@@ -24,7 +24,7 @@ start_vnode(I) ->
   riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
 init([Partition]) ->
-  io:format("hello, I am vnode: ~p, ~p. ~n", [Partition, self()]),
+  lager:info("hello, I am vnode: ~p, ~p. ~n", [Partition, self()]),
   {ok, #state{partition=Partition}}.
 
 % Sample command: respond to a ping

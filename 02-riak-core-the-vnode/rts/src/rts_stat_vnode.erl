@@ -64,7 +64,7 @@ sadd(IdxNode, StatName, Val) ->
 %%%===================================================================
 
 init([Partition]) ->
-  io:format("hello, I am stat vnode: ~p, ~p. ~n", [Partition, self()]),
+  lager:info("hello, I am stat vnode: ~p, ~p~n", [Partition, self()]),
   {ok, #state { partition=Partition, stats=dict:new() }}.
 
 handle_command({get, StatName}, _Sender, #state{stats=Stats}=State) ->

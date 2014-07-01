@@ -5,3 +5,9 @@ ebin/*
 rel/rts
 dev
 apps/rts/src/*
+
+rel/vars/dev1_vars.config
+rel/vars/dev2_vars.config
+rel/vars/dev3_vars.config
+rel/vars/dev4_vars.config
+

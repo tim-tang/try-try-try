@@ -58,12 +58,12 @@ entry(IdxNode, Client, Entry) ->
 %%%===================================================================
 
 init([Partition]) ->
-  io:format("hello, I am entry vnode: ~p, ~p. ~n", [Partition, self()]),
+  lager:info("hello, I am entry vnode: ~p, ~p~n", [Partition, self()]),
   Reg = [ {?COMBINED_LF, fun ?MODULE:combined_lf/2} ],
   {ok, #state { partition=Partition, reg=Reg }}.
 
 handle_command({entry, Client, Entry}, _Sender, #state{reg=Reg}=State) ->
-  io:format("~p~n", [{entry, State#state.partition}]),
+  lager:info("~p incoming entry: ~p~n", [State#state.partition, Entry]),
   lists:foreach(match(Client, Entry), Reg),
   {noreply, State}.
 
@@ -117,11 +117,17 @@ match(Client, Entry) ->
 %%%===================================================================
 
 combined_lf({Client, _Entry, _Regexp}, [_Entry, _Host, _, _User, _Time, Req, Code, BodySize, _Referer, Agent]) ->
-  io:format("We got: ~p, ~p, ~p. ~n", [Req, Code, BodySize]),
+  lager:info("matched: ~p, ~p, ~p~n", [Req, Code, BodySize]),
   rts:sadd(Client, "agents", Agent),
   rts:incrby(Client, "total_sent", list_to_integer(BodySize)),
-  [Method, _Resource, _Protocol] = string:tokens(Req, " "),
-  rts:incr(Client, Method),
+  case string:tokens(Req, " ") of
+    [Method, _Resource, _Protocol] ->
+      rts:incr(Client, Method);
+    [Method] ->
+      rts:incr(Client, Method);
+    _ ->
+      lager:warning("Unexception parsing result: ~p~n", [Req])
+  end,
   case Code of
     [$2, _, _] ->
       rts:incr(Client, "200");
