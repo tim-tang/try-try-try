@@ -1,6 +1,10 @@
--module(rts_vnode).
+-module(hello_vnode).
+
 -behaviour(riak_core_vnode).
--include("rts.hrl").
+
+-include("hello.hrl").
+
+-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([start_vnode/1,
          init/1,
@@ -17,7 +21,11 @@
          handle_coverage/4,
          handle_exit/3]).
 
+-ignore_xref([start_vnode/1]).
+
 -record(state, {partition}).
+
+-define(MASTER, hello_vnode_master).
 
 %% API
 start_vnode(I) ->
@@ -27,12 +35,12 @@ init([Partition]) ->
   lager:info("hello, I am vnode: ~p, ~p. ~n", [Partition, self()]),
   {ok, #state{partition=Partition}}.
 
-% Sample command: respond to a ping
+%% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->
   {reply, {pong, State#state.partition}, State};
 
 handle_command(Message, _Sender, State) ->
-  ?PRINT({unhandled_command, Message}),
+  lager:warning("unhandled command: ~p~n", [Message]),
   {noreply, State}.
 
 handle_handoff_command(_Message, _Sender, State) ->

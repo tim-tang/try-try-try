@@ -1,0 +1,8 @@
+*.beam
+.eunit
+deps/*
+ebin/*
+rel/hello
+dev
+apps/hello/src/*
+rel/vars/dev[1-9]_vars.config

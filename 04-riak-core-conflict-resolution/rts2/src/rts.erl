@@ -5,6 +5,7 @@
 
 -export([ping/0,
          entry_from_file/2,
+         entry_from_file/4,
          entry/2,
          get/2,
          set/3,
@@ -35,6 +36,18 @@ entry_from_file(Client, FilePath) ->
     {ok, Data} ->
       LinesData = binary:split(Data, [<<"\n">>], [global]),
       lists:foreach(fun(LineData) -> entry(Client, binary_to_list(LineData)) end, LinesData),
+      io:format("~p entries processed~n", [length(LinesData)]),
+      ok;
+    {error, Reason} ->
+      io:format("Read file ~s failed: ~p~n", [FilePath, Reason])
+  end.
+
+% @doc Process entries from a file, start with S for N lines
+entry_from_file(Client, FilePath, S, N) ->
+  case file:read_file(FilePath) of
+    {ok, Data} ->
+      LinesData = binary:split(Data, [<<"\n">>], [global]),
+      lists:foreach(fun(LineData) -> entry(Client, binary_to_list(LineData)) end, lists:sublist(LinesData, S, N)),
       io:format("~p entries processed~n", [length(LinesData)]),
       ok;
     {error, Reason} ->
